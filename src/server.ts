@@ -82,4 +82,17 @@ setInterval(() => {
 
 server.listen(port, hostname, () => {
   console.log(`> D-Admin Engine ready on http://${hostname}:${port}`);
+  console.log(`  WS endpoint: ws://${hostname}:${port}/ws`);
+  console.log(`  API endpoint: http://${hostname}:${port}/project`);
+});
+
+// Graceful shutdown (AWS EB sends SIGTERM on deploy/stop)
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('[Server] HTTP server closed.');
+    process.exit(0);
+  });
+  // Force exit after 10 seconds if connections don't close
+  setTimeout(() => process.exit(1), 10000);
 });

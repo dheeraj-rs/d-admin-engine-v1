@@ -8,7 +8,7 @@ const getAllowedOrigins = (): string[] | boolean => {
 };
 
 export const config = {
-  projectsDir: path.join(process.cwd(), 'projects'),
+  projectsDir: process.env.PROJECTS_DIR || path.join(process.cwd(), 'projects'),
   port: process.env.PORT || 3001,
   host: process.env.HOST || '0.0.0.0',
   allowedOrigins: getAllowedOrigins(),

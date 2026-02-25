@@ -68,7 +68,6 @@ export class TerminalService {
       COLORTERM: 'truecolor',
       FORCE_COLOR: '1',
       HOME: process.env.HOME || '/root',
-      ZDOTDIR: shellConfigDir,
       PROMPT: '%F{cyan}~/projects%f %F{white}>%f ',
       PS1: '~/projects > ',
       RPROMPT: '',
@@ -83,12 +82,24 @@ export class TerminalService {
     let execArgs: string[];
 
     const isInteractive = !command || command === 'jsh' || command === '/bin/jsh';
-    let defaultShell = os.platform() === 'win32' ? 'cmd.exe' : '/bin/bash';
 
-    if (os.platform() === 'darwin' && fs.existsSync('/bin/zsh')) {
+    // Shell selection: prefer zsh on macOS, bash on Linux (Amazon Linux may not have zsh)
+    let defaultShell: string;
+    if (os.platform() === 'win32') {
+      defaultShell = 'cmd.exe';
+    } else if (os.platform() === 'darwin' && fs.existsSync('/bin/zsh')) {
       defaultShell = '/bin/zsh';
-    } else if (os.platform() !== 'win32' && process.env.SHELL) {
-      defaultShell = process.env.SHELL;
+    } else if (fs.existsSync('/bin/bash')) {
+      defaultShell = '/bin/bash';
+    } else {
+      defaultShell = process.env.SHELL || '/bin/sh';
+    }
+
+    const usingZsh = defaultShell.endsWith('zsh');
+
+    // Only inject ZDOTDIR (custom zshrc) when actually using zsh
+    if (usingZsh) {
+      env.ZDOTDIR = shellConfigDir;
     }
 
     if (isInteractive) {
