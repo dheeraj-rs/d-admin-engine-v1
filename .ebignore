@@ -1,7 +1,6 @@
 # AWS Elastic Beanstalk deploy ignore — keeps the uploaded zip small.
 # EB builds from source, so node_modules and dist are excluded.
 node_modules/
-dist/
 projects/
 .git/
 *.log
