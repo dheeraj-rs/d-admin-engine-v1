@@ -3,7 +3,6 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import http from 'http';
-import { parse } from 'url';
 
 import { TerminalService } from './engine/terminal';
 import { FileManager } from './engine/file-manager';
@@ -36,8 +35,9 @@ app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// File/Project API routes
-app.use('/api/sandbox/project', projectRouter);
+// File/Project API routes — mounted at /project to match the frontend adapter
+// (adapter calls BACKEND_URL + "/project/create", etc.)
+app.use('/project', projectRouter);
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -46,7 +46,8 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
-  const { pathname } = parse(request.url || '', true);
+  const url = new URL(request.url || '/', `http://${request.headers.host}`);
+  const pathname = url.pathname;
   if (pathname === '/api/sandbox/ws') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
