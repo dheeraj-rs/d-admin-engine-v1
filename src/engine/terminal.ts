@@ -104,7 +104,9 @@ export class TerminalService {
 
     if (isInteractive) {
       execCommand = defaultShell;
-      execArgs = ['--login'];
+      // Removed '--login' because on Render/AWS, login shells often
+      // automatically cd to $HOME, bypassing the `cwd` we explicitly set.
+      execArgs = ['-i'];
     } else {
       execCommand = defaultShell;
       execArgs = ['-c', [command, ...(args || [])].join(' ')];
