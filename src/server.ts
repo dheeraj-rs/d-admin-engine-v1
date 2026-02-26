@@ -8,6 +8,7 @@ import { TerminalService } from './engine/terminal';
 import { FileManager } from './engine/file-manager';
 import { config } from './engine/config';
 import { projectRouter } from './routes/project';
+import { proxyRouter } from './routes/proxy';
 
 // Global error handlers
 process.on('uncaughtException', (err) => {
@@ -38,6 +39,9 @@ app.get('/health', (_req: Request, res: Response) => {
 // File/Project API routes — mounted at /project to match the frontend adapter
 // (adapter calls BACKEND_URL + "/project/create", etc.)
 app.use('/project', projectRouter);
+
+// Proxy route for Vite Dev Servers
+app.use('/proxy', proxyRouter);
 
 // Create HTTP server
 const server = http.createServer(app);
