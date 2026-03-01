@@ -11,7 +11,7 @@
     "dev": "ts-node --project tsconfig.json src/server.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
-    "postinstall": "find node_modules/node-pty -name \"spawn-helper\" -type f -exec chmod +x {} + || true",
+    "postinstall": "npm run build && find node_modules/node-pty -name \"spawn-helper\" -type f -exec chmod +x {} + || true",
     "zip": "npm run build && zip -r deploy.zip . -x 'node_modules/*' -x 'projects/*' -x '.git/*' -x '.env' -x 'Archive.zip' -x 'deploy.zip' -x 'render.yaml'"
   },
   "dependencies": {

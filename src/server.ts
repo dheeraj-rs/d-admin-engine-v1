@@ -1,14 +1,11 @@
 import 'dotenv/config';
-import express, { Request, Response } from 'express';
-import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import http from 'http';
 
 import { TerminalService } from './engine/terminal';
 import { FileManager } from './engine/file-manager';
 import { config } from './engine/config';
-import { projectRouter } from './routes/project';
-import { proxyRouter } from './routes/proxy';
+import app from './app';
 
 // Global error handlers
 process.on('uncaughtException', (err) => {
@@ -20,28 +17,6 @@ process.on('unhandledRejection', (reason) => {
 
 const hostname = config.host;
 const port = Number(config.port);
-
-const app = express();
-
-app.use(cors({
-  origin: config.allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
-}));
-
-app.use(express.json({ limit: '10mb' }));
-
-// Health check (Render, Railway, etc. ping this)
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// File/Project API routes — mounted at /project to match the frontend adapter
-// (adapter calls BACKEND_URL + "/project/create", etc.)
-app.use('/project', projectRouter);
-
-// Proxy route for Vite Dev Servers
-app.use('/proxy', proxyRouter);
 
 // Create HTTP server
 const server = http.createServer(app);
