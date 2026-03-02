@@ -19,9 +19,9 @@ proxyRouter.use('/:port', (req: Request, res: Response, next: NextFunction) => {
         ws: true,
         logger: console,
         selfHandleResponse: true,
-        pathRewrite: (path) => {
-            // Remove /proxy/port from the path forwarded to the target
-            return path.replace(`/proxy/${port}`, '') || '/';
+        pathRewrite: (path, req: any) => {
+            // Strip the base /proxy/port mount prefix and preserve the exact remaining path payload
+            return req.originalUrl.replace(new RegExp(`^/proxy/${port}`), '') || '/';
         },
         on: {
             proxyRes: (proxyRes: IncomingMessage, req: Request, res: Response) => {
@@ -52,12 +52,17 @@ proxyRouter.use('/:port', (req: Request, res: Response, next: NextFunction) => {
                     decode(raw).then((decoded) => {
                         let html = decoded.toString('utf-8');
 
-                        // Rewrite absolute paths like src="/assets/ → src="./assets/
-                        // and href="/assets/ → href="./assets/ so they resolve through the proxy
+                        const proxyBase = `/proxy/${port}/`;
+
+                        // Rewrite absolute paths (src="/assets", href="/src/main.tsx")
+                        // into proxy base paths (src="/proxy/5174/assets") so they don't break on Vercel
                         html = html
-                            .replace(/(src|href)="\/assets\//g, '$1="./assets/')
-                            .replace(/(src|href)='\/assets\//g, "$1='./assets/")
-                            .replace(/url\(["']?\/assets\//g, "url(./assets/");
+                            // Double quotes
+                            .replace(/(src|href|action)="\/(?!\/)([^"]*)"/gi, `$1="${proxyBase}$2"`)
+                            // Single quotes
+                            .replace(/(src|href|action)='\/(?!\/)([^']*)'/gi, `$1='${proxyBase}$2'`)
+                            // url() imports in CSS/Style blocks
+                            .replace(/url\(\s*["']?\/(?!\/)([^"'\)\s]*)["']?\s*\)/gi, `url(${proxyBase}$1)`);
 
                         const responseHeaders: Record<string, string | string[]> = {};
                         for (const [key, val] of Object.entries(proxyRes.headers)) {

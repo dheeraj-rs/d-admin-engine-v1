@@ -121,15 +121,12 @@ export class TerminalService {
         env: env,
       });
 
-      const CTRL_C_RE = /(\^C|\x03)/g;
-
       this.process.onData((data: string) => {
         let cleaned = data
           .split('\n')
           .filter(line => !/;\s*echo\s+"__ACTION_DONE_\d+__\$\?"/.test(line))
           .join('\n')
-          .replace(/[^\r\n]*@(?:srv-|render@)[^\r\n]*[$#>]\s*/g, '')
-          .replace(CTRL_C_RE, '');
+          .replace(/[^\r\n]*@(?:srv-|render@)[^\r\n]*[$#>]\s*/g, '');
 
         this.send({ type: 'output', data: cleaned });
       });
