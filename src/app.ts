@@ -25,4 +25,20 @@ app.use('/project', projectRouter);
 // Proxy route for Vite Dev Servers
 app.use('/proxy', proxyRouter);
 
+// Fallback for Vite absolute paths (e.g., /@vite/client, /src/main.jsx)
+// Because Vite internal JS dynamically imports absolute root paths, they bypass the /proxy router.
+// We intercept all 404s, check the referring page, and dynamically route them to the active tunnel.
+app.use((req, res, next) => {
+  const referer = req.headers.referer;
+  if (referer && !req.path.startsWith('/proxy/') && !req.path.startsWith('/project/')) {
+    const proxyMatch = referer.match(/\/proxy\/(\d+)/);
+    if (proxyMatch) {
+      const port = proxyMatch[1];
+      const targetUrl = `/proxy/${port}${req.originalUrl}`;
+      return res.redirect(302, targetUrl);
+    }
+  }
+  next();
+});
+
 export default app;
