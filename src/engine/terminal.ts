@@ -72,6 +72,9 @@ export class TerminalService {
       PS1: '~/projects > ',
       RPROMPT: '',
       RPS1: '',
+      // Force development mode so npm install never skips devDependencies
+      // (tools like vite live in devDependencies and would be missing in production mode)
+      NODE_ENV: 'development',
     };
 
     if (env.PATH) {
