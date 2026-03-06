@@ -27,13 +27,50 @@ const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url || '/', `http://${request.headers.host}`);
   const pathname = url.pathname;
+
   if (pathname === '/ws') {
+    // Terminal WebSocket
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });
-  } else {
-    socket.destroy();
+    return;
   }
+
+  // Vite HMR WebSocket: /proxy/:port/...
+  // Instead of destroying it, we open a raw TCP tunnel to the local Vite process.
+  const proxyWsMatch = pathname.match(/^\/proxy\/(\d+)(\/.*)?$/);
+  if (proxyWsMatch) {
+    const targetPort = Number(proxyWsMatch[1]);
+    if (!isNaN(targetPort) && targetPort > 0 && targetPort <= 65535) {
+      const net = require('net');
+      const targetSocket = net.connect(targetPort, '127.0.0.1', () => {
+        // Rewrite the upgrade request path before forwarding (strip /proxy/:port prefix)
+        const viteWsPath = (proxyWsMatch[2] || '/') + (url.search || '');
+        const rewrittenRequest = request.rawHeaders
+          .reduce<string[]>((acc, val, i) => {
+            if (i % 2 === 0) acc.push(`${val}: `);
+            else acc[acc.length - 1] += val;
+            return acc;
+          }, [])
+          .join('\r\n');
+        const firstLine = `GET ${viteWsPath} HTTP/${request.httpVersion}\r\n`;
+        const rawUpgrade = `${firstLine}${rewrittenRequest}\r\n\r\n`;
+        targetSocket.write(rawUpgrade);
+        if (head && head.length) targetSocket.write(head);
+        targetSocket.pipe(socket);
+        socket.pipe(targetSocket);
+      });
+      targetSocket.on('error', (err: Error) => {
+        console.error(`[WS Tunnel] Error connecting to Vite port ${targetPort}:`, err.message);
+        socket.destroy();
+      });
+      socket.on('error', () => targetSocket.destroy());
+      return;
+    }
+  }
+
+  // All other upgrade requests rejected
+  socket.destroy();
 });
 
 wss.on('connection', (ws) => {
