@@ -16,12 +16,13 @@ proxyRouter.use('/:port', (req: Request, res: Response, next: NextFunction) => {
     const proxy = createProxyMiddleware({
         target: `http://127.0.0.1:${port}`,
         changeOrigin: true,
-        ws: true,
         logger: console,
         selfHandleResponse: true,
         pathRewrite: (path, req: any) => {
             // Strip the base /proxy/port mount prefix and preserve the exact remaining path payload
-            return req.originalUrl.replace(new RegExp(`^/proxy/${port}`), '') || '/';
+            // For raw HTTP requests, use originalUrl. Fallback to path for safety.
+            const urlToRewrite = req.originalUrl || path || '';
+            return urlToRewrite.replace(new RegExp(`^/proxy/${port}`), '') || '/';
         },
         on: {
             proxyRes: (proxyRes: IncomingMessage, req: Request, res: Response) => {
@@ -81,10 +82,37 @@ proxyRouter.use('/:port', (req: Request, res: Response, next: NextFunction) => {
                     });
                 });
             },
-            error: (err: Error, req: Request, res: Response) => {
+            error: (err: Error, req: Request, res: any) => {
                 console.error(`[Proxy] Error on port ${port}:`, err.message);
+
+                // If it's a websocket upgrade, res is a Socket, which doesn't have headersSent or writeHead
+                if (res.destroy && !res.writeHead) {
+                    return res.destroy();
+                }
+
                 if (!res.headersSent) {
-                    (res as any).status(502).send('Bad Gateway: Proxy target is not running.');
+                    res.writeHead(502, {
+                        'Content-Type': 'text/html',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate'
+                    });
+                    res.end(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta http-equiv="refresh" content="2">
+                            <style>
+                                body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #000; color: #fff; }
+                                .loader { border: 3px solid #333; border-top: 3px solid #3b82f6; border-radius: 50%; width: 32px; height: 32px; animation: spin 1s linear infinite; margin-bottom: 16px; }
+                                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="loader"></div>
+                            <h3>Starting Development Server...</h3>
+                            <p style="color: #888;">Waiting for port ${port} to be ready. Auto-refreshing...</p>
+                        </body>
+                        </html>
+                    `);
                 }
             }
         }

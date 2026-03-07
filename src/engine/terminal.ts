@@ -109,7 +109,16 @@ export class TerminalService {
       execCommand = defaultShell;
       // Removed '--login' because on Render/AWS, login shells often
       // automatically cd to $HOME, bypassing the `cwd` we explicitly set.
-      execArgs = ['-i'];
+      if (defaultShell.endsWith('bash')) {
+        const bashRcPath = path.join(os.tmpdir(), 'd-admin-bashrc');
+        if (!fs.existsSync(bashRcPath)) {
+          // Source original bashrc, then cleanly override PS1 to match the custom aesthetic
+          fs.writeFileSync(bashRcPath, 'if [ -f ~/.bashrc ]; then source ~/.bashrc; fi\nexport PS1="\\[\\e[1;36m\\]~/projects\\[\\e[0m\\] > "\n');
+        }
+        execArgs = ['--rcfile', bashRcPath, '-i'];
+      } else {
+        execArgs = ['-i'];
+      }
     } else {
       execCommand = defaultShell;
       execArgs = ['-c', [command, ...(args || [])].join(' ')];
