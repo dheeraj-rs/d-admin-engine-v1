@@ -21,6 +21,21 @@ export class FileManager {
 
   async createProject(projectId: string, files: Record<string, string>, isMount: boolean = false) {
     const projectPath = this.getSecurePath(projectId);
+
+    // Auto-cleanup: enforce single-project storage on the server
+    try {
+      const allProjects = await fs.readdir(this.baseDir);
+      for (const dirName of allProjects) {
+        if (dirName !== path.basename(projectPath)) {
+          const oldProjectPath = path.join(this.baseDir, dirName);
+          await fs.remove(oldProjectPath);
+          console.log(`[Storage] Cleaned up old project: ${dirName}`);
+        }
+      }
+    } catch (err) {
+      console.error('[Storage] Error during project cleanup:', err);
+    }
+
     if (isMount) {
       await fs.emptyDir(projectPath);
     } else {
