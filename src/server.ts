@@ -7,12 +7,15 @@ import { FileManager } from './engine/file-manager';
 import { config } from './engine/config';
 import app from './app';
 
-// Global error handlers
+// Global error handlers — always exit so PM2 can auto-restart
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  console.error('[FATAL] Uncaught Exception — restarting via PM2:', err);
+  // Flush logs then exit
+  setTimeout(() => process.exit(1), 500);
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
+  console.error('[FATAL] Unhandled Promise Rejection — restarting via PM2:', reason);
+  setTimeout(() => process.exit(1), 500);
 });
 
 const hostname = config.host;
